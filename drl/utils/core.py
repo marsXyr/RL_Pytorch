@@ -1,12 +1,9 @@
 import torch
 import numpy as np, random
-import gym
 from collections import namedtuple
 
+"""
 
-"""
-    use from pytorch deep reinforcement learning 
-"""
 Transition = namedtuple(
     'Transition', ('state', 'action', 'next_state', 'reward', 'done'))
 
@@ -19,7 +16,6 @@ class ReplayBuffer(object):
         self.position = 0
 
     def push(self, *args):
-        """Saves a transition."""
         if len(self.memory) < self.capacity:
             self.memory.append(None)
         self.memory[self.position] = Transition(*args)
@@ -31,6 +27,7 @@ class ReplayBuffer(object):
     def __len__(self):
         return len(self.memory)
 
+"""
 
 class OUNoise:
     """
