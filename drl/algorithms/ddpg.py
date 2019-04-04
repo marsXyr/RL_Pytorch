@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.optim as optim
 from drl.utils import core
 from drl.utils.model import Actor, Critic
+from drl.utils.replay_buffer import ReplayBuffer
 from drl.utils.logx import EpochLogger
 from drl.utils.run_utils import setup_logger_kwargs
 
@@ -25,7 +26,7 @@ class DDPG:
         # action_limit for clamping: critically, assume all dimensions share the same bound
         self.action_limit = self.env.action_space.high[0]
 
-        self.replay_buffer = core.ReplayBuffer(args.buffer_size)
+        self.replay_buffer = ReplayBuffer(args.buffer_size, self.state_dim, self.action_dim)
 
         self._init_parameters()
         self._init_nets()
@@ -88,19 +89,13 @@ class DDPG:
         action = (action + noise.add()) if noise else action
         return np.clip(action, -self.action_limit, self.action_limit)
 
-    def add_experience(self, state, action, next_state, reward, done):
-        reward = core.to_tensor(np.array([reward])).unsqueeze(0)
-        done = core.to_tensor(np.array([done]).astype('uint8')).unsqueeze(0)
-        action = core.to_tensor(action)
-        self.replay_buffer.push(state, action, next_state, reward, done)
-
     def train(self, batch):
         with torch.no_grad():
-            state_batch = torch.cat(batch.state)
-            action_batch = torch.cat(batch.action)
-            next_state_batch = torch.cat(batch.next_state)
-            reward_batch = torch.cat(batch.reward)
-            done_batch = torch.cat(batch.done)
+            state_batch = batch['states']
+            action_batch = batch['actions']
+            next_state_batch = batch['next_states']
+            reward_batch = batch['rewards']
+            done_batch = batch['dones']
 
         # q_target
         with torch.no_grad():
@@ -136,8 +131,6 @@ class DDPG:
 
         start_time = time.time()
         state, reward, done, ep_return, ep_len = self.env.reset(), 0, False, 0, 0
-        # Add the first dimension (None, state_dim)
-        state = core.to_tensor(state).unsqueeze(0)
         total_steps = self.steps_per_epoch * self.epochs
 
         # Main loop: collect experience in env and update each epoch
@@ -148,13 +141,11 @@ class DDPG:
             use the learned policy (with some noise, via OUNoise).
             """
             if t > self.start_steps:
-                action = self.get_action(state, self.ouNoise)
+                action = self.get_action(core.to_tensor(state).unsqueeze(0), noise=self.ouNoise)
             else:
                 action = self.env.action_space.sample()
-                action = action[np.newaxis, :]
             # Step the env
-            next_state, reward, done, _ = self.env.step(action.flatten())
-            next_state = core.to_tensor(next_state).unsqueeze(0)
+            next_state, reward, done, _ = self.env.step(action)
             ep_return += reward
             ep_len += 1
             """
@@ -163,8 +154,9 @@ class DDPG:
             that isn't based on the agent's state)
             """
             done = False if ep_len == self.max_ep_len else done
+            done_bool = 0 if ep_len == self.max_ep_len else float(done)
             # Add the experience to the replay buffer
-            self.add_experience(state, action, next_state, reward, done)
+            self.replay_buffer.add((state, action, next_state, reward, done_bool))
             # Super critical, easy to overlook step: make sure to update most recent observation!
             state = next_state
             if done or (ep_len == self.max_ep_len):
@@ -173,14 +165,12 @@ class DDPG:
                 (in accordance with source code of TD3 published by original authors).
                 """
                 for _ in range(ep_len):
-                    transitions = self.replay_buffer.sample(self.batch_size)
-                    batch = core.Transition(*zip(*transitions))
+                    batch = self.replay_buffer.sample(self.batch_size)
                     critic_loss, actor_loss = self.train(batch)
                     self.logger.store(ActorLoss=actor_loss, CriticLoss=critic_loss)
                     self.logger.store(EpRet=ep_return, EpLen=ep_len)
 
                 state, reward, done, ep_return, ep_len = self.env.reset(), 0, False, 0, 0
-                state = core.to_tensor(state).unsqueeze(0)
 
             # End of epoch wrap-up
             if (t > 0) and (t % self.steps_per_epoch == 0):
@@ -209,12 +199,10 @@ class DDPG:
     def eval(self, epochs):
         for j in range(epochs):
             state, reward, done, ep_return, ep_len = self.test_env.reset(), 0, False, 0, 0
-            state = core.to_tensor(state).unsqueeze(0)
             while not (done or (ep_len == self.max_ep_len)):
                 # Take deterministic actions at test time (noise_scale=0)
-                action = self.get_action(state)
-                state, reward, done, _ = self.test_env.step(action.flatten())
-                state = core.to_tensor(state).unsqueeze(0)
+                action = self.get_action(core.to_tensor(state).unsqueeze(0))
+                state, reward, done, _ = self.test_env.step(action)
                 ep_return += reward
                 ep_len += 1
 
