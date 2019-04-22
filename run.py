@@ -29,12 +29,12 @@ def parse_and_execute_grid_search(cmd, args):
     """Interprets algorithm name and cmd line args into an ExperimentGrid."""
 
     # Parse which algorithm to execute
-    algo = eval('drl.'+cmd)
+    algo = eval(cmd)
 
     # Before all else, check to see if any of the flags is 'help'.
     valid_help = ['--help', '-h', 'help']
     if any([arg in valid_help for arg in args]):
-        print('\n\nShowing docstring for drl.'+cmd+':\n')
+        print('\n\nShowing docstring for'+cmd+':\n')
         print(algo.__doc__)
         sys.exit()
 
@@ -174,7 +174,7 @@ if __name__ == '__main__':
     valid_help = ['--help', '-h', 'help']
     valid_cmds = valid_algos + valid_utils + valid_help
     assert cmd in valid_cmds, \
-        "Select an algorithm or utility which is implemented in drl/algorithms."
+        "Select an algorithm or utility."
 
     if cmd in valid_help:
         # Before all else, check to see if any of the flags is 'help'.
@@ -184,7 +184,7 @@ if __name__ == '__main__':
         help_msg = dedent("""
             Experiment in DRL_Pytorch from the command line with
 
-            \tpython -m drl.run CMD [ARGS...]
+            \tpython -m run CMD [ARGS...]
 
             where CMD is a valid command. Current valid commands are:
             """) + str_valid_cmds
@@ -198,12 +198,12 @@ if __name__ == '__main__':
             FYI: When running an algorithm, any keyword argument to the
             algorithm function can be used as a flag, eg
 
-            \tpython -m drl.run ppo --env HalfCheetah-v2 --clip_ratio 0.1
+            \tpython -m run ppo --env HalfCheetah-v2 --clip_ratio 0.1
 
             If you need a quick refresher on valid kwargs, get the docstring
             with
 
-            \tpython -m drl.run [algo] --help
+            \tpython -m run [algo] --help
 
             See the "Running Experiments" docs page for more details.
 
