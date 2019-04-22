@@ -6,12 +6,13 @@ If you have some problems, please feel free to discuss.😁
 **Notice: this implemented based on OpenAI Spinning Up and Others.**  
 ***
 #### Done (but still need to be optimized)  
-**Off-Policy: **  
-
+Off-Policy:    
 * DDPG
 * TD3
-* SAC
-**On-Policy: **  
+* SAC  
+  
+  
+On-Policy:   
   
 * VPG
 * TRPO
