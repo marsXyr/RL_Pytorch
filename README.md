@@ -5,15 +5,22 @@ If you have some problems, please feel free to discuss.😁
 **Advantages: Easy to understand, Concise, Uniform code format**  
 **Notice: this implemented based on OpenAI Spinning Up and Others.**  
 ***
-#### Done (but still need to be optimized)
+#### Done (but still need to be optimized)  
+
+**Off-Policy: **  
+
 * DDPG
 * TD3
 * SAC
 
-#### Continue Updating...
+**On-Policy: **  
+  
 * VPG
 * TRPO
 * PPO
+
+#### Continue Updating...
+* DQN
 * ...
 ***
 #### Requirements
